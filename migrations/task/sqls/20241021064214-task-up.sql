@@ -282,16 +282,21 @@ GROUP BY user_id;
     -- inner join ( 用戶王小明的已使用堂數) as "COURSE_BOOKING"
     -- on "COURSE_BOOKING".user_id = "CREDIT_PURCHASE".user_id;
 SELECT 
-    cp.user_id, -- 選取用戶的 ID
-    (SUM(cp.purchased_credits) - COALESCE(SUM(CASE WHEN cb.status IN ('上課中', '已完成') THEN 1 ELSE 0 END), 0)) AS remaining_credit
+    cp.user_id,
+    (SUM(cp.purchased_credits) - COALESCE(COUNT(cb.id), 0)) AS remaining_credit
 FROM 
-    "CREDIT_PURCHASE" cp -- 資料來自購買堂數的資料表
+    "CREDIT_PURCHASE" cp
 LEFT JOIN 
-    "COURSE_BOOKING" cb ON cp.user_id = cb.user_id -- 連接課程預約資料表
+    "COURSE_BOOKING" cb ON cp.user_id = cb.user_id
+    AND cb.status IN ('上課中', '已完成')
 WHERE 
-    cp.user_id = (SELECT id FROM "USER" WHERE name = '王小明') -- 限定為王小明的用戶 ID
+    cp.user_id = (SELECT id FROM "USER" WHERE name = '王小明')
 GROUP BY 
-    cp.user_id; -- 按用戶分組
+    cp.user_id;
+-- 助教批改建議(王小明的剩餘可用堂數為 34 唷，剛好是5-6題的 total 扣掉5-7題的 total 值。同學可再檢查看看)後做的修改
+-- 計算王小明購買的總堂數。
+-- 只計算狀態為 '上課中' 或 '已完成' 的預約作為已使用堂數。
+-- 從購買的總堂數中減去已使用的堂數，得到剩餘可用堂數
 
 -- ████████  █████   █     ███  
 --   █ █   ██    █  █     █     
@@ -361,10 +366,13 @@ WHERE
 
 -- 6-5. 查詢：計算 11 月份有預約課程的會員人數（需使用 Distinct，並用 created_at 和 status 欄位統計）
 -- 顯示須包含以下欄位： 預約會員人數
-SELECT 
-    COUNT(DISTINCT cb.user_id) AS 預約會員人數 -- 統計不重複的會員數
-FROM 
-    "COURSE_BOOKING" cb
-WHERE 
-    EXTRACT(MONTH FROM cb.created_at) = 11 -- 篩選預約時間為 11 月
-    AND cb.status = 'active'; -- 篩選預約狀態為 "active"
+SELECT COUNT(DISTINCT cb.user_id) AS 預約會員人數
+FROM "COURSE_BOOKING" cb
+WHERE EXTRACT(MONTH FROM cb.created_at) = 11
+  AND cb.status IN ('即將授課', '上課中');
+
+    --助教批改建議(篩選預約狀態沒有 "active" 這個值唷，這個部分可再檢查看看)
+    --修改
+    -- 計算 11 月份創建的預約。
+    -- 只計算狀態為 '即將授課' 或 '上課中' 的預約，這些狀態表示有效的預約。
+    -- 使用 DISTINCT 確保每個會員只被計算一次。            
